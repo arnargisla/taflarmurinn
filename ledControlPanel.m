@@ -52,14 +52,14 @@ function ledControlPanel_OpeningFcn(hObject, eventdata, handles, varargin)
 % handles    structure with handles and user data (see GUIDATA)
 % varargin   command line arguments to ledControlPanel (see VARARGIN)
 
-ledPin = 'D13';
-serialCommunicationPort = '/dev/ttyS101'; % NOTE in Windows this is 
-                         ...something like 'COM1' or 'COM23
-lc = ledController;
+
 
 % Choose default command line output for ledControlPanel
 handles.output = hObject;
+
+lc = varargin{2};
 setappdata(handles.figure1, 'lc', lc);
+
 
 % Update handles structure
 guidata(hObject, handles);
@@ -89,7 +89,6 @@ function onButton_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 lc = getappdata(handles.figure1, 'lc');
-disp(lc);
 lc.turnLedOn();
 %lc.turnLedOn();
 %writeDigitalPin(a, ledPin, true);
