@@ -52,19 +52,21 @@ function ledControlPanel_OpeningFcn(hObject, eventdata, handles, varargin)
 % handles    structure with handles and user data (see GUIDATA)
 % varargin   command line arguments to ledControlPanel (see VARARGIN)
 
+ledPin = 'D13';
+serialCommunicationPort = '/dev/ttyS101'; % NOTE in Windows this is 
+                         ...something like 'COM1' or 'COM23
+lc = ledController;
+
 % Choose default command line output for ledControlPanel
 handles.output = hObject;
+setappdata(handles.figure1, 'lc', lc);
 
 % Update handles structure
 guidata(hObject, handles);
 
-global ledPin;
-global a;
-ledPin = 'D13';
-serialCommunicationPort = '/dev/ttyS101'; % NOTE in Windows this is 
-                         ...something like 'COM1' or 'COM23'
-a = arduino(serialCommunicationPort, 'uno');
-configurePin(a, ledPin, 'DigitalOutput');
+
+
+
 
 % UIWAIT makes ledControlPanel wait for user response (see UIRESUME)
 % uiwait(handles.figure1);
@@ -86,13 +88,17 @@ function onButton_Callback(hObject, eventdata, handles)
 % hObject    handle to onButton (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-global a ledPin;
-writeDigitalPin(a, ledPin, true);
+lc = getappdata(handles.figure1, 'lc');
+disp(lc);
+lc.turnLedOn();
+%lc.turnLedOn();
+%writeDigitalPin(a, ledPin, true);
 
 % --- Executes on button press in offButton.
 function offButton_Callback(hObject, eventdata, handles)
 % hObject    handle to offButton (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-global a ledPin;
-writeDigitalPin(a, ledPin, false);
+lc = getappdata(handles.figure1, 'lc');
+lc.turnLedOff();
+%writeDigitalPin(a, ledPin, false);

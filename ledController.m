@@ -13,19 +13,12 @@ classdef ledController
         function obj=ledController
             obj.a = arduino(obj.serialCommunicationPort, 'uno');
             configurePin(obj.a, obj.ledPin, 'DigitalOutput');
-
-            obj.greet;
-            %start gui
-            ledcontrolgui(obj, {});
         end
         function turnLedOn(self) 
             writeDigitalPin(self.a, self.ledPin, true);
         end
         function turnLedOff(self)
             writeDigitalPin(self.a, self.ledPin, false);
-        end
-        function greet(self)
-            disp 'hello';
         end
     end
 end
