@@ -2,7 +2,7 @@
 % http://se.mathworks.com/hardware-support/arduino-matlab.html
 classdef robotController < handle
     properties (Constant)
-        arduinoConnected = false;
+        arduinoConnected = true;
         plottingEnabled = true;
         ledPin = 'D13';
         serialCommunicationPort = '/dev/ttyS101'; % NOTE in Windows this is 
