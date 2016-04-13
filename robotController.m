@@ -8,6 +8,19 @@ classdef robotController < handle
                                  ...something like 'COM1' or 'COM23'
         serialCommunicationPort2 = '/dev/ttyS102'; % NOTE in Windows this is 
                                  ...something like 'COM1' or 'COM23'
+        
+        stepperDirPin = 'D4';
+        stepperStepPin = 'D5';
+        theta2AServoPin = 'D6';
+        theta2BServoPin = 'D7';
+
+        theta3ServoPin = 'D8';
+        theta4ServoPin = 'D9';
+        theta5FirstServoPin = 'D10';
+        theta5SecondServoPin = 'D11';
+
+        theta6ServoPin = 'D12';
+        
     end
     properties (GetAccess=private)
         arduinoConnected = true;
@@ -16,11 +29,18 @@ classdef robotController < handle
         link1, link2, link3, link4, link5, link6;
         jointPositions;
         robotFigure;
+        
+        theta2AServo;
+        theta3Servo;
+        
+        robotControlTimer;
+        motorStepSize = 1;
     end
     methods
         function self=robotController(arduinoConnected)
             self.arduinoConnected = arduinoConnected;
-            self.jointPositions = [0 0 0 0 0 0];
+            
+            self.jointPositions = [90 90 90 90 90 90];
 
             %+---+-----------+-----------+-----------+-----------+-----------+             
             %| j |     theta |         d |         a |     alpha |    offset |             
@@ -35,28 +55,12 @@ classdef robotController < handle
 
 
             % Define the links using Denavit-Hartenberg (D-H) parameters
-            self.link1 = Link('alpha', pi/2, 'a',    0, 'd', 0.3);
-            self.link2 = Link('alpha',   0, 'a',  0.5, 'd', 0.0);
-            self.link3 = Link('alpha',    0, 'a',  0.5, 'd', 0.0);
-            self.link4 = Link('alpha',    0, 'a',  0.5, 'd', 0.0);
-            self.link5 = Link('alpha', pi/2, 'a',  0.5, 'd', 0.0);
-            self.link6 = Link('alpha',    0, 'a',  0.5, 'd', 0.5);
-        
-
-            self.link1 = Link('d',    0.2, 'a',      0, 'alpha',  pi/2);
-            self.link2 = Link('d',      0, 'a',    0.0, 'alpha',     0);
-            self.link3 = Link('d',      0, 'a', 0.4318, 'alpha',     0);
-            self.link4 = Link('d',    0.0, 'a', 0.0203, 'alpha', -pi/2);
-            self.link5 = Link('d',    0.0, 'a',      0, 'alpha',  pi/2);
-            self.link6 = Link('d',      0, 'a',      0, 'alpha', -pi/2);
-        
-
             self.link1 = Link('d',  0.3, 'a',      0.0, 'alpha', pi/2);
-            self.link2 = Link('d',    0, 'a',      0.2, 'alpha',    0, 'offset', pi/2);
-            self.link3 = Link('d',    0, 'a',      0.2, 'alpha',    0);
-            self.link4 = Link('d',    0, 'a',      0.2, 'alpha',    0);
-            self.link5 = Link('d',    0, 'a',      0.2, 'alpha',    0);
-            self.link6 = Link('d',    0, 'a',      0.2, 'alpha',    0);
+            self.link2 = Link('d',    0, 'a',      0.2, 'alpha',    0, 'offset', 0);
+            self.link3 = Link('d',    0, 'a',      0.2, 'alpha',    0, 'offset', -pi/2);
+            self.link4 = Link('d',    0, 'a',      0.0, 'alpha',    0);
+            self.link5 = Link('d',    0, 'a',      0.0, 'alpha',    0);
+            self.link6 = Link('d',    0, 'a',      0.0, 'alpha',    0);
 
             % Set joint limits
             %L(1) does not have any limits
@@ -78,17 +82,66 @@ classdef robotController < handle
             
             if(self.arduinoConnected)
                 try
-                    self.arduino = arduino(serialCommunicationPort, 'uno');
+                    self.arduino = arduino(self.serialCommunicationPort, 'uno');
                 catch exception
                     disp 'port 1 failed'
+                    disp(exception)
+                    try
+                        self.arduino = arduino(self.serialCommunicationPort2, 'uno');
+                    catch exception
+                        disp 'port 2 failed'
+                        disp(exception)
+                    end
                 end
-                try
-                    self.arduino = arduino(serialCommunicationPort2, 'uno');
-                catch exception
-                    disp 'port 2 failed'
-                end
+                
                 configurePin(self.arduino, self.ledPin, 'DigitalOutput');
+                
+                self.setUpServos();
             end
+            
+            
+            %% start timer
+            
+            
+            self.robotControlTimer = timer;
+            self.robotControlTimer.TimerFcn = @(~,thisEvent)self.update();
+            self.robotControlTimer.Period = 2;
+            self.robotControlTimer.TasksToExecute = 100000000;
+            self.robotControlTimer.ExecutionMode = 'fixedRate';
+
+            
+            start(self.robotControlTimer);
+        end
+        function update(self)
+            self.updateJoint2();
+            disp 'update'
+        end
+        function setUpServos(self)
+            self.setupTheta2AServo();
+            self.setupTheta3Servo();
+        end
+        function setupTheta2AServo(self)
+            self.theta2AServo = servo(...
+                self.arduino, self.theta2AServoPin,...
+                'MinPulseDuration', 700*10^-6, ...
+                'MaxPulseDuration', 2520*10^-6);
+        end
+        function setupTheta3Servo(self)
+            self.theta3Servo = servo(...
+                self.arduino, self.theta3ServoPin,...
+                'MinPulseDuration', 700*10^-6, ...
+                'MaxPulseDuration', 2350*10^-6);
+        end
+        function testTheta2AServo(self)
+            servo = self.theta2AServo;
+            self.testServo(servo);
+        end
+        function testServo(~, servo)
+             disp 'testing servo';
+             moveServoTo(servo, 90, 2.0);
+             moveServoTo(servo, 110, 2.0);
+             moveServoTo(servo, 70, 2.0);
+             moveServoTo(servo, 90, 2.0);
         end
         function turnLedOn(self) 
             if(self.arduinoConnected)
@@ -104,9 +157,33 @@ classdef robotController < handle
             self.jointPositions(1) = angle;
         end
         function setJoint2Position(self, angle)
+            % if(self.arduinoConnected)
+            %     moveServoTo(self.theta2AServo, angle, 1.0);
+            % end
             self.jointPositions(2) = angle;
         end
+        function updateJoint2(self)
+            position = 180 * readPosition(self.theta2AServo);
+            destination = self.jointPositions(2);
+            difference = abs(destination - position);
+            if(position < destination)
+                nextPosition = position + servo.motorStepSize
+            else
+                nextPosition = position - servo.motorStepSize
+            end
+            
+            if(difference < servo.motorStepSize)
+                nextPosition = destination;
+            end
+            disp(['position', position, 'destination', destination, 'difference', difference, 'nextPosition', nextPosition]);
+            if(difference < 0.5)
+                return;
+            end
+        end
         function setJoint3Position(self, angle)
+            if(self.arduinoConnected)
+                moveServoTo(self.theta3Servo, angle, 1.0);
+            end
             self.jointPositions(3) = angle;
         end
         function setJoint4Position(self, angle)
@@ -157,6 +234,9 @@ classdef robotController < handle
             %plot(self.robot, self.jointPositions);
             self.robot.animate(pi/180 * self.jointPositions);
             
+        end
+        function delete(obj)
+          stop(obj.robotControlTimer);
         end
     end
 end

@@ -1,5 +1,15 @@
+clear;
+
 % Create a new ledController
-controller = robotController(false);
+controller = robotController(true);
 
 % Create a view for the led controller
 robotControlPanel('controller', controller);
+
+%%
+if(0)
+%%
+    delete(controller);
+    stop(timerfind);
+%%
+end

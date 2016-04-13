@@ -52,8 +52,6 @@ function robotControlPanel_OpeningFcn(hObject, eventdata, handles, varargin)
 % handles    structure with handles and user data (see GUIDATA)
 % varargin   command line arguments to robotControlPanel (see VARARGIN)
 
-
-
 % Choose default command line output for robotControlPanel
 handles.output = hObject;
 
@@ -64,9 +62,6 @@ setappdata(handles.figure1, 'mode', 1);
 % Update handles structure
 guidata(hObject, handles);
 
-
-
-initializeLabels(handles);
 initializeSliders(handles);
 
 % UIWAIT makes robotControlPanel wait for user response (see UIRESUME)
@@ -88,12 +83,13 @@ varargout{1} = handles.output;
 function initializeSliders(handles)
     controller = getappdata(handles.figure1, 'controller');
     positions = controller.getJointPositions();
-    initializeSlider(handles.slider_1, -90, 90, positions(1));
-    initializeSlider(handles.slider_2, -90, 90, positions(2));
-    initializeSlider(handles.slider_3, -90, 90, positions(3));
-    initializeSlider(handles.slider_4, -90, 90, positions(4));
-    initializeSlider(handles.slider_5, -90, 90, positions(5));
-    initializeSlider(handles.slider_6, -90, 90, positions(6));
+    initializeSlider(handles.slider_1, 0, 180, positions(1));
+    initializeSlider(handles.slider_2, 0, 180, positions(2));
+    initializeSlider(handles.slider_3, 0, 180, positions(3));
+    initializeSlider(handles.slider_4, 0, 180, positions(4));
+    initializeSlider(handles.slider_5, 0, 180, positions(5));
+    initializeSlider(handles.slider_6, 0, 180, positions(6));
+    initializeLabels(handles);
 
 
 function initializeSlider(slider, min, max, value)
@@ -180,8 +176,8 @@ function slider_1_Callback(hObject, eventdata, handles)
 
 % Hints: get(hObject,'Value') returns position of slider
 %        get(hObject,'Min') and get(hObject,'Max') to determine range of slider
-updateRobot(handles);
 updateSlider1Label(handles);
+updateRobot(handles);
 
 % --- Executes during object creation, after setting all properties.
 function slider_1_CreateFcn(hObject, eventdata, handles)
@@ -203,8 +199,8 @@ function slider_2_Callback(hObject, eventdata, handles)
 
 % Hints: get(hObject,'Value') returns position of slider
 %        get(hObject,'Min') and get(hObject,'Max') to determine range of slider
-updateRobot(handles);
 updateSlider2Label(handles);
+updateRobot(handles);
 
 
 % --- Executes during object creation, after setting all properties.
@@ -227,8 +223,8 @@ function slider_3_Callback(hObject, eventdata, handles)
 
 % Hints: get(hObject,'Value') returns position of slider
 %        get(hObject,'Min') and get(hObject,'Max') to determine range of slider
-updateRobot(handles);
 updateSlider3Label(handles);
+updateRobot(handles);
 
 
 % --- Executes during object creation, after setting all properties.
@@ -251,8 +247,8 @@ function slider_4_Callback(hObject, eventdata, handles)
 
 % Hints: get(hObject,'Value') returns position of slider
 %        get(hObject,'Min') and get(hObject,'Max') to determine range of slider
-updateRobot(handles);
 updateSlider4Label(handles);
+updateRobot(handles);
 
 
 % --- Executes during object creation, after setting all properties.
@@ -275,8 +271,8 @@ function slider_5_Callback(hObject, eventdata, handles)
 
 % Hints: get(hObject,'Value') returns position of slider
 %        get(hObject,'Min') and get(hObject,'Max') to determine range of slider
-updateRobot(handles);
 updateSlider5Label(handles);
+updateRobot(handles);
 
 
 % --- Executes during object creation, after setting all properties.
@@ -299,8 +295,8 @@ function slider_6_Callback(hObject, eventdata, handles)
 
 % Hints: get(hObject,'Value') returns position of slider
 %        get(hObject,'Min') and get(hObject,'Max') to determine range of slider
-updateRobot(handles);
 updateSlider6Label(handles);
+updateRobot(handles);
 
 
 % --- Executes during object creation, after setting all properties.
