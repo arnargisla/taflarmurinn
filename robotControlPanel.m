@@ -22,7 +22,7 @@ function varargout = robotControlPanel(varargin)
 
 % Edit the above text to modify the response to help robotControlPanel
 
-% Last Modified by GUIDE v2.5 12-Apr-2016 01:01:03
+% Last Modified by GUIDE v2.5 13-Apr-2016 13:39:04
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -88,12 +88,12 @@ varargout{1} = handles.output;
 function initializeSliders(handles)
     controller = getappdata(handles.figure1, 'controller');
     positions = controller.getJointPositions();
-    initializeSlider(handles.slider_1, -180, 180, positions(1));
-    initializeSlider(handles.slider_2, -180, 180, positions(2));
-    initializeSlider(handles.slider_3, -180, 180, positions(3));
-    initializeSlider(handles.slider_4, -180, 180, positions(4));
-    initializeSlider(handles.slider_5, -180, 180, positions(5));
-    initializeSlider(handles.slider_6, -180, 180, positions(6));
+    initializeSlider(handles.slider_1, -90, 90, positions(1));
+    initializeSlider(handles.slider_2, -90, 90, positions(2));
+    initializeSlider(handles.slider_3, -90, 90, positions(3));
+    initializeSlider(handles.slider_4, -90, 90, positions(4));
+    initializeSlider(handles.slider_5, -90, 90, positions(5));
+    initializeSlider(handles.slider_6, -90, 90, positions(6));
 
 
 function initializeSlider(slider, min, max, value)
@@ -101,7 +101,7 @@ function initializeSlider(slider, min, max, value)
         'Min', min, ...
         'Max', max, ...
         'Value', value,...
-        'SliderStep', [1/360, 30/360]);
+        'SliderStep', [1/180, 30/360]);
 
 function initializeLabels(handles)
     initializeSliderLabels(handles);
@@ -159,7 +159,7 @@ function updateRobot(handles)
     pos(5) = getSliderValue(handles.slider_5);
     pos(6) = getSliderValue(handles.slider_6);
     controller = getappdata(handles.figure1, 'controller');
-    controller.setJointPositions(pi/180*pos);
+    controller.setJointPositions(pos);
     controller.moveRobot();
 
 function mode = getMode(handles)
@@ -340,5 +340,3 @@ function offButton_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 controller = getappdata(handles.figure1, 'controller');
 controller.turnLedOff();
-
-

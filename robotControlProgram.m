@@ -1,5 +1,5 @@
 % Create a new ledController
-controller = robotController;
+controller = robotController(false);
 
 % Create a view for the led controller
 robotControlPanel('controller', controller);
