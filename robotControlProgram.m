@@ -1,5 +1,7 @@
 clear;
 
+addpath('servo');
+
 % Create a new ledController
 controller = robotController(true);
 
@@ -11,5 +13,6 @@ if(0)
 %%
     delete(controller);
     stop(timerfind);
+    clear controller;
 %%
 end

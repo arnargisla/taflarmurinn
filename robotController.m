@@ -8,6 +8,8 @@ classdef robotController < handle
                                  ...something like 'COM1' or 'COM23'
         serialCommunicationPort2 = '/dev/ttyS102'; % NOTE in Windows this is 
                                  ...something like 'COM1' or 'COM23'
+        serialCommunicationPort3 = '/dev/ttyS103'; % NOTE in Windows this is 
+                                 ...something like 'COM1' or 'COM23'
         
         stepperDirPin = 'D4';
         stepperStepPin = 'D5';
@@ -16,8 +18,8 @@ classdef robotController < handle
 
         theta3ServoPin = 'D8';
         theta4ServoPin = 'D9';
-        theta5FirstServoPin = 'D10';
-        theta5SecondServoPin = 'D11';
+        theta5AServoPin = 'D10';
+        theta5BServoPin = 'D11';
 
         theta6ServoPin = 'D12';
         
@@ -32,9 +34,17 @@ classdef robotController < handle
         
         theta2AServo;
         theta3Servo;
+        theta4Servo;
+        theta5AServo;
+        theta5BServo;
+        theta6Servo;
         
         robotControlTimer;
-        motorStepSize = 1;
+        motorStepSize = 7;
+        timerPeriod = 0.5;
+        
+        
+        stepperPosition = 0;
     end
     methods
         function self=robotController(arduinoConnected)
@@ -55,12 +65,12 @@ classdef robotController < handle
 
 
             % Define the links using Denavit-Hartenberg (D-H) parameters
-            self.link1 = Link('d',  0.3, 'a',      0.0, 'alpha', pi/2);
-            self.link2 = Link('d',    0, 'a',      0.2, 'alpha',    0, 'offset', 0);
+            self.link1 = Link('d',  0.3, 'a',      0.0, 'alpha', pi/2, 'offset', -pi/2);
+            self.link2 = Link('d',    0, 'a',      0.2, 'alpha',    0, 'offset',     0);
             self.link3 = Link('d',    0, 'a',      0.2, 'alpha',    0, 'offset', -pi/2);
-            self.link4 = Link('d',    0, 'a',      0.0, 'alpha',    0);
-            self.link5 = Link('d',    0, 'a',      0.0, 'alpha',    0);
-            self.link6 = Link('d',    0, 'a',      0.0, 'alpha',    0);
+            self.link4 = Link('d',    0, 'a',      0.2, 'alpha',    0, 'offset', -pi/2);
+            self.link5 = Link('d',    0, 'a',      0.2, 'alpha', pi/2, 'offset', -pi/2);
+            self.link6 = Link('d',    0, 'a',      0.1, 'alpha',    0, 'offset', -pi/2);
 
             % Set joint limits
             %L(1) does not have any limits
@@ -91,6 +101,12 @@ classdef robotController < handle
                     catch exception
                         disp 'port 2 failed'
                         disp(exception)
+                        try
+                            self.arduino = arduino(self.serialCommunicationPort3, 'uno');
+                        catch exception
+                            disp 'port 3 failed'
+                            disp(exception)
+                        end
                     end
                 end
                 
@@ -105,7 +121,7 @@ classdef robotController < handle
             
             self.robotControlTimer = timer;
             self.robotControlTimer.TimerFcn = @(~,thisEvent)self.update();
-            self.robotControlTimer.Period = 2;
+            self.robotControlTimer.Period = self.timerPeriod;
             self.robotControlTimer.TasksToExecute = 100000000;
             self.robotControlTimer.ExecutionMode = 'fixedRate';
 
@@ -113,12 +129,22 @@ classdef robotController < handle
             start(self.robotControlTimer);
         end
         function update(self)
-            self.updateJoint2();
-            disp 'update'
+            if(self.arduinoConnected)
+                self.updateJoint1();
+                %self.updateJoint2();
+                %self.updateJoint3();
+                %self.updateJoint4();
+                %self.updateJoint5();
+                %self.updateJoint6();
+            end
         end
         function setUpServos(self)
             self.setupTheta2AServo();
             self.setupTheta3Servo();
+            self.setupTheta4Servo();
+            self.setupTheta5AServo();
+            self.setupTheta5BServo();
+            self.setupTheta6Servo();
         end
         function setupTheta2AServo(self)
             self.theta2AServo = servo(...
@@ -131,6 +157,30 @@ classdef robotController < handle
                 self.arduino, self.theta3ServoPin,...
                 'MinPulseDuration', 700*10^-6, ...
                 'MaxPulseDuration', 2350*10^-6);
+        end
+        function setupTheta4Servo(self)
+            self.theta4Servo = servo(...
+                self.arduino, self.theta4ServoPin,...
+                'MinPulseDuration', 700*10^-6, ...
+                'MaxPulseDuration', 2600*10^-6);
+        end
+        function setupTheta5AServo(self)
+            self.theta5AServo = servo(...
+                self.arduino, self.theta5AServoPin,...
+                'MinPulseDuration', 850*10^-6, ...
+                'MaxPulseDuration', 3600*10^-6);
+        end
+        function setupTheta5BServo(self)
+            self.theta5BServo = servo(...
+                self.arduino, self.theta5BServoPin,...
+                'MinPulseDuration', 850*10^-6, ...
+                'MaxPulseDuration', 3600*10^-6);
+        end
+        function setupTheta6Servo(self)
+            self.theta6Servo = servo(...
+                self.arduino, self.theta6ServoPin,...
+                'MinPulseDuration', 850*10^-6, ...
+                'MaxPulseDuration', 3400*10^-6);
         end
         function testTheta2AServo(self)
             servo = self.theta2AServo;
@@ -157,33 +207,93 @@ classdef robotController < handle
             self.jointPositions(1) = angle;
         end
         function setJoint2Position(self, angle)
-            % if(self.arduinoConnected)
-            %     moveServoTo(self.theta2AServo, angle, 1.0);
-            % end
             self.jointPositions(2) = angle;
         end
-        function updateJoint2(self)
-            position = 180 * readPosition(self.theta2AServo);
-            destination = self.jointPositions(2);
+        function updateJoint1(self)
+            
+            destination = 200 * self.jointPositions(1)/360;
+            position = self.stepperPosition;
             difference = abs(destination - position);
-            if(position < destination)
-                nextPosition = position + servo.motorStepSize
+            
+            
+            direction = 1;
+            
+            numSteps = difference;
+            disp([' numSteps ', num2str(numSteps), ...
+                  ' difference ', num2str(difference)]);
+            maxNumSteps = 10;
+            if(numSteps > maxNumSteps)
+                numSteps = maxNumSteps;
+            end
+            if(difference < 1)
+                numSteps = 0;
+            end
+            disp([' direction ', num2str(direction), ...
+                  ' numSteps ', num2str(numSteps), ...
+                  ' position ', num2str(position), ...
+                  ' destination ', num2str(destination), ...
+                  ' position ', num2str(numSteps)]);
+            if(direction == 1)
+                self.stepperPosition = mod(self.stepperPosition + numSteps, 200);
             else
-                nextPosition = position - servo.motorStepSize
+                self.stepperPosition = mod(self.stepperPosition - numSteps, 200);
             end
             
-            if(difference < servo.motorStepSize)
+            writeDigitalPin(self.arduino, self.stepperDirPin, direction);
+            
+            for i = 1:numSteps
+                writeDigitalPin(self.arduino, self.stepperStepPin, 1);
+                writeDigitalPin(self.arduino, self.stepperStepPin, 0);
+            end
+            
+        end
+        function updateJoint2(self)
+            self.updateJoint(self.theta2AServo, 2);
+        end
+        function updateJoint3(self)
+            self.updateJoint(self.theta3Servo, 3);
+        end
+        function updateJoint4(self)
+            self.updateJoint(self.theta4Servo, 4);
+        end
+        function updateJoint5(self)
+            self.updateJoint(self.theta5AServo, 5);
+            self.updateJoint(self.theta5BServo, 5, true);
+        end
+        function updateJoint6(self)
+            self.updateJoint(self.theta6Servo, 6);
+        end
+        function updateJoint(self, servo, jointIndex, invert)
+            if nargin < 4
+                invert = false;
+            end
+            
+            position = 180 * readPosition(servo);            
+            destination = self.jointPositions(jointIndex);
+            if(invert)
+                destination = 180 - destination;
+            end
+            difference = abs(destination - position);
+            if(position < destination)
+                nextPosition = position + self.motorStepSize;
+            else
+                nextPosition = position - self.motorStepSize;
+            end
+            
+            if(difference < self.motorStepSize)
                 nextPosition = destination;
             end
-            disp(['position', position, 'destination', destination, 'difference', difference, 'nextPosition', nextPosition]);
             if(difference < 0.5)
-                return;
+                nextPosition = destination;
             end
+%             disp(['position ', num2str(position),...
+%                  ' destination ', num2str(destination),...
+%                  ' difference ', num2str(difference),...
+%                  ' nextPosition ', num2str(nextPosition),...
+%                  ' invert ', num2str(invert)]);
+            moveServoToInstant(servo, nextPosition);
         end
         function setJoint3Position(self, angle)
-            if(self.arduinoConnected)
-                moveServoTo(self.theta3Servo, angle, 1.0);
-            end
             self.jointPositions(3) = angle;
         end
         function setJoint4Position(self, angle)

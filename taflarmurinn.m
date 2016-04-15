@@ -1,6 +1,5 @@
 % Package needed for this to work
 %http://se.mathworks.com/hardware-support/arduino-matlab.html
-clear a ledPin ledState blinkIntervalInSeconds serialCommunicationPort;
 
 %% Configuration
 endRotatorServoPin = 'D12';
@@ -13,8 +12,8 @@ theta2BServoPin = 'D7';
 
 theta3ServoPin = 'D8';
 theta4ServoPin = 'D9';
-theta5FirstServoPin = 'D10';
-theta5SecondServoPin = 'D11';
+theta5AServoPin = 'D10';
+theta5BServoPin = 'D11';
 
 theta6ServoPin = 'D12';
 ledPin = 'D13';
@@ -56,7 +55,8 @@ if 0
     theta3Servo = servo(a, theta3ServoPin, 'MinPulseDuration', 700*10^-6, 'MaxPulseDuration', 2350*10^-6);
     theta4Servo = servo(a, theta4ServoPin, 'MinPulseDuration', 700*10^-6, 'MaxPulseDuration', 2600*10^-6);
     
-    % vantar t5A og t5B
+    theta5AServo = servo(a, theta5AServoPin, 'MinPulseDuration', 850*10^-6, 'MaxPulseDuration', 3850*10^-6);
+    theta5BServo = servo(a, theta5BServoPin, 'MinPulseDuration', 850*10^-6, 'MaxPulseDuration', 3850*10^-6);
     theta6Servo = servo(a, theta6ServoPin, 'MinPulseDuration', 850*10^-6, 'MaxPulseDuration', 3850*10^-6);
 
 
@@ -67,13 +67,36 @@ if 0
     %%
     %%
     clear servo
-    servo = bottomServo;
+    
+    servo = theta6Servo;
     writePosition(servo, 90/180);
     pause(0.7)
     writePosition(servo, 180/180);
     pause(2)
     writePosition(servo, 0/180);
     pause(2)
+    %%
+    
+    
+    clear theta5AServo  theta5BServo
+    theta5AServo = servo(a, theta5AServoPin, 'MinPulseDuration', 850*10^-6, 'MaxPulseDuration', 3600*10^-6);
+    theta5BServo = servo(a, theta5BServoPin, 'MinPulseDuration', 850*10^-6, 'MaxPulseDuration', 3600*10^-6);
+    
+    writePosition(theta5AServo, 90/180);
+    writePosition(theta5BServo, 90/180);
+    pause(0.7)
+    writePosition(theta5AServo, 0/180);
+    writePosition(theta5BServo, 180/180);
+    pause(2)
+    writePosition(theta5AServo, 90/180);
+    writePosition(theta5BServo, 90/180);
+    pause(2)
+    writePosition(theta5AServo, 180/180);
+    writePosition(theta5BServo, 0/180);
+    pause(2)
+    writePosition(theta5AServo, 90/180);
+    writePosition(theta5BServo, 90/180);
+    
     %%
 
 

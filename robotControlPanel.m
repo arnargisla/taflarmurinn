@@ -83,7 +83,7 @@ varargout{1} = handles.output;
 function initializeSliders(handles)
     controller = getappdata(handles.figure1, 'controller');
     positions = controller.getJointPositions();
-    initializeSlider(handles.slider_1, 0, 180, positions(1));
+    initializeSlider1(handles.slider_1, 0, 360, positions(1));
     initializeSlider(handles.slider_2, 0, 180, positions(2));
     initializeSlider(handles.slider_3, 0, 180, positions(3));
     initializeSlider(handles.slider_4, 0, 180, positions(4));
@@ -98,6 +98,13 @@ function initializeSlider(slider, min, max, value)
         'Max', max, ...
         'Value', value,...
         'SliderStep', [1/180, 30/360]);
+    
+function initializeSlider1(slider, min, max, value)
+    set(slider, ...
+        'Min', min, ...
+        'Max', max, ...
+        'Value', value,...
+        'SliderStep', [1/360, 30/360]);
 
 function initializeLabels(handles)
     initializeSliderLabels(handles);
