@@ -22,7 +22,7 @@ function varargout = robotControlPanel(varargin)
 
 % Edit the above text to modify the response to help robotControlPanel
 
-% Last Modified by GUIDE v2.5 13-Apr-2016 13:39:04
+% Last Modified by GUIDE v2.5 15-Apr-2016 21:39:31
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -54,6 +54,8 @@ function robotControlPanel_OpeningFcn(hObject, eventdata, handles, varargin)
 
 % Choose default command line output for robotControlPanel
 handles.output = hObject;
+
+disp 'initializing control panel';
 
 controller = varargin{2};
 setappdata(handles.figure1, 'controller', controller);
@@ -153,7 +155,21 @@ function toggleMode(handles)
     else
         setappdata(handles.figure1, 'mode', 1);
     end
+    
+function gripperAct(handles)
+    controller = getappdata(handles.figure1, 'controller');
+    gripperIsOpen = controller.getGripperState();
+    if(gripperIsOpen)
+        controller.gripperClose();
+        setText(handles.gripperStatusText, 'Closed');
+    else
+        controller.gripperOpen();
+        setText(handles.gripperStatusText, 'Open');
+    end
 
+    
+    
+    
 function updateRobot(handles)
     pos(1) = getSliderValue(handles.slider_1);
     pos(2) = getSliderValue(handles.slider_2);
@@ -343,3 +359,11 @@ function offButton_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 controller = getappdata(handles.figure1, 'controller');
 controller.turnLedOff();
+
+
+% --- Executes on button press in gripperButton.
+function gripperButton_Callback(hObject, eventdata, handles)
+% hObject    handle to gripperButton (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+    gripperAct(handles);

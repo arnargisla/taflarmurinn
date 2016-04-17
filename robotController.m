@@ -6,10 +6,13 @@ classdef robotController < handle
         ledPin = 'D13';
         serialCommunicationPort = '/dev/ttyS101'; % NOTE in Windows this is 
                                  ...something like 'COM1' or 'COM23'
-        serialCommunicationPort2 = '/dev/ttyS102'; % NOTE in Windows this is 
-                                 ...something like 'COM1' or 'COM23'
-        serialCommunicationPort3 = '/dev/ttyS103'; % NOTE in Windows this is 
-                                 ...something like 'COM1' or 'COM23'
+        serialCommunicationPort2 = '/dev/ttyS102';
+        serialCommunicationPort3 = '/dev/ttyS103';
+        serialCommunicationPort4 = '/dev/ttyS104';
+        
+        boardType = 'uno'; %'Mega2560';
+        gripperPotPin = 'D2';
+        gripperServoPin = 'D3';
         
         stepperDirPin = 'D4';
         stepperStepPin = 'D5';
@@ -22,6 +25,14 @@ classdef robotController < handle
         theta5BServoPin = 'D11';
 
         theta6ServoPin = 'D12';
+        controllerOnPin = 'D13';
+        
+        controlPin1 = 'A0';
+        controlPin2 = 'A1';
+        controlPin3 = 'A2';
+        controlPin4 = 'A3';
+        controlPin5 = 'A4';
+        controlPin6 = 'A5';
         
     end
     properties (GetAccess=private)
@@ -33,18 +44,27 @@ classdef robotController < handle
         robotFigure;
         
         theta2AServo;
+        theta2BServo;
         theta3Servo;
         theta4Servo;
+        
         theta5AServo;
         theta5BServo;
         theta6Servo;
         
+        gripperServo;
+        
         robotControlTimer;
         motorStepSize = 7;
-        timerPeriod = 0.5;
+        timerPeriod = 0.2;
         
+        gripperState = 1;
+        lastGripperState = 1;
         
-        stepperPosition = 0;
+        servosOn = true;
+        remoteEnabled = true;
+        
+        stepperPosition = 100;
     end
     methods
         function self=robotController(arduinoConnected)
@@ -91,26 +111,49 @@ classdef robotController < handle
             self.moveRobot();
             
             if(self.arduinoConnected)
+                disp 'initializing arduino ...'
                 try
-                    self.arduino = arduino(self.serialCommunicationPort, 'uno');
+                    self.arduino = arduino(self.serialCommunicationPort, self.boardType);
                 catch exception
                     disp 'port 1 failed'
-                    disp(exception)
+                    disp(exception.message)
                     try
-                        self.arduino = arduino(self.serialCommunicationPort2, 'uno');
+                        self.arduino = arduino(self.serialCommunicationPort2, self.boardType);
                     catch exception
                         disp 'port 2 failed'
-                        disp(exception)
+                        disp(exception.message)
                         try
-                            self.arduino = arduino(self.serialCommunicationPort3, 'uno');
+                            self.arduino = arduino(self.serialCommunicationPort3, self.boardType);
                         catch exception
                             disp 'port 3 failed'
-                            disp(exception)
+                            disp(exception.message)
+                            try
+                                self.arduino = arduino(self.serialCommunicationPort4, self.boardType);
+                            catch exception
+                                disp 'port 4 failed'
+                                disp(exception.message)
+                            end
                         end
                     end
                 end
                 
-                configurePin(self.arduino, self.ledPin, 'DigitalOutput');
+                
+                disp 'done ... initializing arduino'
+                
+                % stup po
+                
+                configurePin(self.arduino, self.controlPin1, 'AnalogInput');
+                configurePin(self.arduino, self.controlPin2, 'AnalogInput');
+                configurePin(self.arduino, self.controlPin3, 'AnalogInput');
+                configurePin(self.arduino, self.controlPin4, 'AnalogInput');
+                configurePin(self.arduino, self.controlPin5, 'AnalogInput');
+                configurePin(self.arduino, self.controlPin6, 'AnalogInput');
+                
+                % setup stepper
+                configurePin(self.arduino, self.stepperDirPin, 'DigitalOutput');
+                configurePin(self.arduino, self.stepperStepPin, 'DigitalOutput');
+                
+                configurePin(self.arduino, self.controllerOnPin, 'DigitalInput');
                 
                 self.setUpServos();
             end
@@ -119,38 +162,138 @@ classdef robotController < handle
             %% start timer
             
             
+            disp 'starting timer ...'
             self.robotControlTimer = timer;
             self.robotControlTimer.TimerFcn = @(~,thisEvent)self.update();
             self.robotControlTimer.Period = self.timerPeriod;
             self.robotControlTimer.TasksToExecute = 100000000;
             self.robotControlTimer.ExecutionMode = 'fixedRate';
 
-            
             start(self.robotControlTimer);
+            
+            disp 'done ... starting timer'
+            
+            %%
+            if(self.gripperState)
+                self.gripperOpen();
+            else
+                self.gripperClose();
+            end
+            
+        end
+        function stopTimer(self)
+            %stop(self.robotControlTimer);
+        end
+        function startTimer(self)
+            %start(self.robotControlTimer);
         end
         function update(self)
+            disp 'update'
+            
             if(self.arduinoConnected)
-                self.updateJoint1();
-                %self.updateJoint2();
-                %self.updateJoint3();
-                %self.updateJoint4();
-                %self.updateJoint5();
-                %self.updateJoint6();
+                % self.updateJoint1();
+                if(self.servosOn)
+                    self.updateJoint2();
+                    self.updateJoint3();
+                    self.updateJoint4();
+                    self.updateJoint5();
+                    self.updateJoint6();
+                    if(self.lastGripperState ~= self.gripperState)
+                        if(self.gripperState)
+                            self.gripperOpen();
+                        else
+                            self.gripperClose();
+                        end
+                    end
+                end
+            end
+            
+            controllerOn = readDigitalPin(self.arduino, self.controllerOnPin);
+            if(self.remoteEnabled && controllerOn)
+                self.gripperState = readDigitalPin(self.arduino, self.gripperPotPin);
+                control1Reading = readVoltage(self.arduino, self.controlPin1);
+                control2Reading = readVoltage(self.arduino, self.controlPin2);
+                control3Reading = readVoltage(self.arduino, self.controlPin3);
+                control4Reading = readVoltage(self.arduino, self.controlPin4);
+                control5Reading = readVoltage(self.arduino, self.controlPin5);
+                control6Reading = readVoltage(self.arduino, self.controlPin6);
+                disp([num2str(control1Reading), ' ', num2str(control2Reading), ' ', num2str(control3Reading), ' ', num2str(control4Reading), ' ', num2str(control5Reading), ' ', num2str(control6Reading)])
+                
+                d = [0, 0, 0, 0, 0, 0];
+                inc = 5;
+                
+                if(control1Reading > 4)
+                    d(1) = inc;
+                end
+                if(control1Reading < 1)
+                    d(1) = -inc;
+                end
+                
+                if(control2Reading > 4)
+                    d(2) = inc;
+                end
+                if(control2Reading < 1)
+                    d(2) = -inc;
+                end
+                
+                if(control3Reading > 4)
+                    d(3) = inc;
+                end
+                if(control3Reading < 1)
+                    d(3) = -inc;
+                end
+                
+                if(control4Reading > 4)
+                    d(4) = inc;
+                end
+                if(control4Reading < 1)
+                    d(4) = -inc;
+                end
+                
+                if(control5Reading > 4)
+                    d(5) = inc;
+                end
+                if(control5Reading < 1)
+                    d(5) = -inc;
+                end
+                
+                if(control6Reading > 4)
+                    d(6) = inc;
+                end
+                if(control6Reading < 1)
+                    d(6) = -inc;
+                end
+                
+                res = d + self.jointPositions;
+                self.setJointPositions(res);
             end
         end
         function setUpServos(self)
-            self.setupTheta2AServo();
-            self.setupTheta3Servo();
-            self.setupTheta4Servo();
-            self.setupTheta5AServo();
-            self.setupTheta5BServo();
-            self.setupTheta6Servo();
+            if(self.servosOn)
+                disp 'setting up servos ...'
+                self.setupTheta2AServo();
+                self.setupTheta2BServo();
+                self.setupTheta3Servo();
+                self.setupTheta4Servo();
+                self.setupTheta5AServo();
+                self.setupTheta5BServo();
+                self.setupTheta6Servo();
+
+                self.setupGripperServo();
+                disp 'done ... setting up servos'
+            end
         end
         function setupTheta2AServo(self)
             self.theta2AServo = servo(...
                 self.arduino, self.theta2AServoPin,...
                 'MinPulseDuration', 700*10^-6, ...
                 'MaxPulseDuration', 2520*10^-6);
+        end
+        function setupTheta2BServo(self)
+            self.theta2BServo = servo(...
+                self.arduino, self.theta2BServoPin,...
+                'MinPulseDuration', 700*10^-6, ...
+                'MaxPulseDuration', 2400*10^-6);
         end
         function setupTheta3Servo(self)
             self.theta3Servo = servo(...
@@ -168,46 +311,67 @@ classdef robotController < handle
             self.theta5AServo = servo(...
                 self.arduino, self.theta5AServoPin,...
                 'MinPulseDuration', 850*10^-6, ...
-                'MaxPulseDuration', 3600*10^-6);
+                'MaxPulseDuration', 3500*10^-6);
         end
         function setupTheta5BServo(self)
             self.theta5BServo = servo(...
                 self.arduino, self.theta5BServoPin,...
                 'MinPulseDuration', 850*10^-6, ...
-                'MaxPulseDuration', 3600*10^-6);
+                'MaxPulseDuration', 3500*10^-6);
         end
         function setupTheta6Servo(self)
             self.theta6Servo = servo(...
                 self.arduino, self.theta6ServoPin,...
                 'MinPulseDuration', 850*10^-6, ...
-                'MaxPulseDuration', 3400*10^-6);
+                'MaxPulseDuration', 3500*10^-6);
         end
-        function testTheta2AServo(self)
-            servo = self.theta2AServo;
-            self.testServo(servo);
+        function setupGripperServo(self)
+            self.gripperServo = servo(...
+                self.arduino, self.gripperServoPin,...
+                'MinPulseDuration', 850*10^-6, ...
+                'MaxPulseDuration', 3500*10^-6);
         end
-        function testServo(~, servo)
-             disp 'testing servo';
-             moveServoTo(servo, 90, 2.0);
-             moveServoTo(servo, 110, 2.0);
-             moveServoTo(servo, 70, 2.0);
-             moveServoTo(servo, 90, 2.0);
+        function gripperState = getGripperState(self)
+            gripperState = self.gripperState;
         end
-        function turnLedOn(self) 
-            if(self.arduinoConnected)
-                writeDigitalPin(self.arduino, self.ledPin, true);
-            end
+        function writePositionServo(self, servo, pos)
+            self.stopTimer();
+            writePosition(servo, pos);
+            self.startTimer();
         end
-        function turnLedOff(self)
-            if(self.arduinoConnected)
-                writeDigitalPin(self.arduino, self.ledPin, false);
-            end
+        function gripperClose(self)
+            self.writePositionServo(self.gripperServo, 0/180);
+            pause(0.5);
+            self.writePositionServo(self.gripperServo, 130/180);
+            self.lastGripperState = self.gripperState;
+            self.gripperState = 0;
+        end
+        function gripperOpen(self)
+            self.writePositionServo(self.gripperServo, 180/180);
+            pause(0.5);
+            self.writePositionServo(self.gripperServo, 175/180);
+            self.lastGripperState = self.gripperState;
+            self.gripperState = 1;
         end
         function setJoint1Position(self, angle)
             self.jointPositions(1) = angle;
         end
         function setJoint2Position(self, angle)
             self.jointPositions(2) = angle;
+        end
+        function moveStepper(self, numSteps, dir)
+            self.stopTimer();
+            writeDigitalPin(self.arduino, self.stepperDirPin, dir);
+            self.startTimer();
+            for i = 1:numSteps
+                self.stopTimer();
+                writeDigitalPin(self.arduino, self.stepperStepPin, 1);
+                self.startTimer();
+                pause(0.01);
+                self.stopTimer();
+                writeDigitalPin(self.arduino, self.stepperStepPin, 0);
+                self.startTimer();
+            end
         end
         function updateJoint1(self)
             
@@ -219,8 +383,8 @@ classdef robotController < handle
             direction = 1;
             
             numSteps = difference;
-            disp([' numSteps ', num2str(numSteps), ...
-                  ' difference ', num2str(difference)]);
+            %disp([' numSteps ', num2str(numSteps), ...
+            %      ' difference ', num2str(difference)]);
             maxNumSteps = 10;
             if(numSteps > maxNumSteps)
                 numSteps = maxNumSteps;
@@ -228,11 +392,11 @@ classdef robotController < handle
             if(difference < 1)
                 numSteps = 0;
             end
-            disp([' direction ', num2str(direction), ...
-                  ' numSteps ', num2str(numSteps), ...
-                  ' position ', num2str(position), ...
-                  ' destination ', num2str(destination), ...
-                  ' position ', num2str(numSteps)]);
+            %disp([' direction ', num2str(direction), ...
+            %      ' numSteps ', num2str(numSteps), ...
+            %      ' position ', num2str(position), ...
+            %      ' destination ', num2str(destination), ...
+            %      ' position ', num2str(numSteps)]);
             if(direction == 1)
                 self.stepperPosition = mod(self.stepperPosition + numSteps, 200);
             else
@@ -249,6 +413,7 @@ classdef robotController < handle
         end
         function updateJoint2(self)
             self.updateJoint(self.theta2AServo, 2);
+            self.updateJoint(self.theta2BServo, 2, true);
         end
         function updateJoint3(self)
             self.updateJoint(self.theta3Servo, 3);
@@ -257,8 +422,8 @@ classdef robotController < handle
             self.updateJoint(self.theta4Servo, 4);
         end
         function updateJoint5(self)
-            self.updateJoint(self.theta5AServo, 5);
-            self.updateJoint(self.theta5BServo, 5, true);
+            self.updateJoint(self.theta5BServo, 5);
+            self.updateJoint(self.theta5AServo, 5, true);
         end
         function updateJoint6(self)
             self.updateJoint(self.theta6Servo, 6);
@@ -291,7 +456,12 @@ classdef robotController < handle
 %                  ' difference ', num2str(difference),...
 %                  ' nextPosition ', num2str(nextPosition),...
 %                  ' invert ', num2str(invert)]);
-            moveServoToInstant(servo, nextPosition);
+            self.moveServoToInstant(servo, nextPosition);
+        end
+        function moveServoToInstant(self, servo, destinationAngleInDegrees)
+            servoDestination = destinationAngleInDegrees/180;
+            
+            self.writePositionServo(servo, servoDestination);
         end
         function setJoint3Position(self, angle)
             self.jointPositions(3) = angle;
@@ -309,7 +479,10 @@ classdef robotController < handle
             positions = self.jointPositions;
         end
         function setJointPositions(self, positions)
-            setJoint1Position(self, positions(1));
+            joint1pos = mod(positions(1), 360);
+            positions = min(positions, 180);
+            positions = max(positions, 0);
+            setJoint1Position(self, joint1pos);
             setJoint2Position(self, positions(2));
             setJoint3Position(self, positions(3));
             setJoint4Position(self, positions(4));
@@ -346,7 +519,7 @@ classdef robotController < handle
             
         end
         function delete(obj)
-          stop(obj.robotControlTimer);
+            stop(obj.robotControlTimer);
         end
     end
 end
